@@ -555,7 +555,7 @@ elif st.session_state.page == "settings":
 
         st.markdown('<div class="card"><h4>API Status</h4>', unsafe_allow_html=True)
         ak = os.getenv("GOOGLE_API_KEY")
-        if ak: st.markdown(f'<span class="pill pill-amber">🔑 API Key: ...{ak[-6:]}</span>', unsafe_allow_html=True)
+        if ak: st.markdown('<span class="pill pill-green">🔑 API Key: Connected</span>', unsafe_allow_html=True)
         else: st.error("GOOGLE_API_KEY not found in .env")
         conn = cal.is_calendar_connected()
         st.markdown(f'<span class="pill {"pill-green" if conn else "pill-amber"}">📅 Calendar + Drive: {"Connected" if conn else "Not connected"}</span>', unsafe_allow_html=True)
