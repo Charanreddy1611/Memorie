@@ -43,12 +43,41 @@ from logger import get_logger
 log = get_logger(__name__)
 
 
+def _creds_from_secrets():
+    """
+    Attempt to load OAuth credentials from Streamlit secrets (``GOOGLE_TOKEN``).
+
+    This enables deployment on Streamlit Community Cloud where
+    ``run_local_server`` is unavailable.  The secret should contain the full
+    JSON string that ``token.json`` normally holds.
+
+    Returns:
+        Credentials or None if the secret is absent or unparseable.
+    """
+    try:
+        import streamlit as st
+        token_json = st.secrets.get("GOOGLE_TOKEN", None)
+        if not token_json:
+            return None
+        from google.oauth2.credentials import Credentials
+        token_data = json.loads(token_json) if isinstance(token_json, str) else dict(token_json)
+        return Credentials.from_authorized_user_info(token_data, OAUTH_SCOPES)
+    except Exception as exc:
+        log.debug("Could not load creds from st.secrets: %s", exc)
+        return None
+
+
 def _get_creds():
     """
-    Return valid OAuth credentials, running the installed-app flow if needed.
+    Return valid OAuth credentials.
 
-    Loads ``TOKEN_PATH``; refreshes or opens the browser flow using
-    ``CREDENTIALS_PATH`` and ``OAUTH_SCOPES``, then saves the token.
+    Resolution order:
+      1. ``st.secrets["GOOGLE_TOKEN"]`` (Streamlit Cloud deployment).
+      2. ``TOKEN_PATH`` file on disk (local development).
+      3. ``InstalledAppFlow.run_local_server`` (first-time local auth).
+
+    After obtaining or refreshing credentials the token is persisted to disk
+    when running locally (write may silently fail on read-only cloud hosts).
 
     Returns:
         google.oauth2.credentials.Credentials instance.
@@ -61,8 +90,9 @@ def _get_creds():
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
 
-    creds = None
-    if os.path.exists(TOKEN_PATH):
+    creds = _creds_from_secrets()
+
+    if not creds and os.path.exists(TOKEN_PATH):
         creds = Credentials.from_authorized_user_file(TOKEN_PATH, OAUTH_SCOPES)
 
     if not creds or not creds.valid:
@@ -77,8 +107,11 @@ def _get_creds():
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_PATH, OAUTH_SCOPES)
             creds = flow.run_local_server(port=0)
 
-        with open(TOKEN_PATH, "w") as f:
-            f.write(creds.to_json())
+        try:
+            with open(TOKEN_PATH, "w") as f:
+                f.write(creds.to_json())
+        except OSError:
+            log.debug("Could not persist token to disk (read-only filesystem)")
 
     return creds
 
@@ -245,12 +278,17 @@ def upload_memory_to_drive(memory: dict) -> dict:
 
 def is_calendar_connected() -> bool:
     """
-    Check whether a token file exists and credentials are valid or refreshable.
+    Check whether valid OAuth credentials are available from secrets or disk.
 
     Returns:
         True if OAuth state allows API calls without a new user flow.
     """
     log.info("is_calendar_connected called")
+
+    secret_creds = _creds_from_secrets()
+    if secret_creds:
+        return secret_creds.valid or (secret_creds.expired and secret_creds.refresh_token is not None)
+
     if not os.path.exists(TOKEN_PATH):
         return False
     try:
