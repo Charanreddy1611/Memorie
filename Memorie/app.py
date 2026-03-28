@@ -349,7 +349,7 @@ if st.session_state.page == "capture":
                         pass
                     if do_video:
                         st.write("Veo 3.1 filming… Lyria 3 composing… Nano Banana painting…")
-                        vid_result = vgen.generate_memory_video(mem, reference_images=char_refs if char_refs else None, style=style, max_extensions=max_ext - 1)
+                        vid_result = vgen.generate_memory_video(mem, reference_images=char_refs if char_refs else None, style=style, max_extensions=max_ext - 1, progress_callback=st.write)
                         if vid_result.get("video_path"):  updates["video_path"] = vid_result["video_path"]
                         if vid_result.get("music_path"):  updates["music_path"] = vid_result["music_path"]
                         if vid_result.get("cover_path"):  updates["cover_path"] = vid_result["cover_path"]; updates["thumbnail_path"] = vid_result["cover_path"]

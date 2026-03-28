@@ -28,6 +28,10 @@ dist/
 build/
 *.egg-info/
 
+# Docker (not used for Streamlit Cloud)
+Dockerfile
+.dockerignore
+
 # IDE
 .idea/
 .vscode/

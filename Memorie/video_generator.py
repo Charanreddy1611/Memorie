@@ -753,6 +753,12 @@ def generate_memory_video(
             if progress_callback:
                 progress_callback(f"Extending with Scene {i + 2} (+7 sec)...")
             new_path, new_veo = extend_video(veo_video, ext_prompt)
+            if not new_path or new_veo is None:
+                log.warning("Extension attempt 1 failed for scene %d, retrying...", i + 2)
+                if progress_callback:
+                    progress_callback(f"Scene {i + 2} retry...")
+                time.sleep(3)
+                new_path, new_veo = extend_video(veo_video, ext_prompt)
             if new_path and new_veo:
                 video_path = new_path
                 veo_video = new_veo
@@ -760,6 +766,7 @@ def generate_memory_video(
                 if progress_callback:
                     progress_callback(f"Scene {i + 2} added ({timings[f'scene_{i + 2}']}s)")
             else:
+                log.error("Extension failed for scene %d after retry", i + 2)
                 if progress_callback:
                     progress_callback(f"Scene {i + 2} extension failed, stopping.")
                 break
