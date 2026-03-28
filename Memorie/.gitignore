@@ -1,0 +1,31 @@
+# Secrets & credentials
+.env
+credentials.json
+token.json
+google_sheets_credentials.json
+
+# Database (ephemeral on cloud)
+*.db
+
+# Generated assets (large media files)
+assets/*.mp4
+assets/*.mp3
+assets/*.wav
+assets/*.png
+assets/*.jpg
+assets/ref_*
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+.devcontainer/
