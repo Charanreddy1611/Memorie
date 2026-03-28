@@ -15,6 +15,9 @@ assets/*.png
 assets/*.jpg
 assets/ref_*
 
+# Log files
+*.log
+
 # Python cache
 __pycache__/
 *.py[cod]

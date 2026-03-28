@@ -1,0 +1,33 @@
+[2026-03-28 08:06:46] INFO database — init_db called
+[2026-03-28 08:06:46] INFO database — get_db called
+[2026-03-28 08:07:12] INFO database — get_all_memories called
+[2026-03-28 08:07:12] INFO database — get_db called
+[2026-03-28 08:07:12] INFO database — _row_to_memory called row_id='b331576a-4c53-48df-a6fd-87696a53d696'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["my dog"]'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["The dog\'s tail thumping against the wall as the narrator opens the door.", "The dog stopping every few steps on a walk, intently sniffing the ground.", "The dog turning its head to look back at the narrator during the walk.", "Golden light hitting the trees during the late afternoon walk.", "The dog sprawled asleep on the floor, the narrator carefully stepping around it."]'
+[2026-03-28 08:07:12] INFO database — _row_to_memory called row_id='8d8fe963-7a40-4d9a-b458-1ee21096ad2e'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='[]'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["Waking up in a quiet room, sunlight filtering through, a subtle tension in the air.", "Sitting thoughtfully, perhaps with a cup of tea, gazing out a window, lost in reflection.", "A visual metaphor of internal gears quietly clicking into place, a sense of order forming.", "A moment of inner peace, a slight smile playing on lips, as a complex idea simplifies.", "Imagining a winding, well-lit path stretching before me, no longer shrouded in fog."]'
+[2026-03-28 08:07:12] INFO database — _row_to_memory called row_id='ef7cf8aa-6c81-4205-8f88-fe8118fad331'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["User", "Pet (dog)"]'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["The pet\'s tail thumping excitedly against the wall upon the user\'s return home.", "The pet stopping every few steps during a sunset walk, sniffing invisible things.", "The pet looking back at the user for a second, checking if they were still there.", "The user slowing down on walks, noticing light and the neighborhood\'s quiet hum.", "The realization that the pet accepts the user \'as I am,\' without judgment."]'
+[2026-03-28 08:07:12] INFO database — _row_to_memory called row_id='35a8903c-d2c5-4b3b-a096-c80e29032d20'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='[]'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["Waking up with a mix of ambition\'s pressure and possibility hanging in the morning air.", "Sitting quietly, deep in thought, contemplating personal goals and aspirations.", "A subtle, almost imperceptible internal click as thoughts align into a clearer structure.", "A gentle, knowing smile appearing as the weight of ambition transforms into focused determination."]'
+[2026-03-28 08:07:12] INFO database — _row_to_memory called row_id='a1e33986-b013-4cad-8a4a-909e93d9a437'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='[]'
+[2026-03-28 08:07:12] INFO database — _deserialize_list called raw='["Waking up to morning light, a mix of pressure and possibility weighing gently.", "Sitting in quiet contemplation, thoughts about goals shifting from overwhelming to structured.", "Gazing at a distant point, seeing the path ahead and feeling motivated by the journey.", "A close-up on hands engaged in a simple, consistent action, symbolizing persistent effort.", "A serene, internal moment of quiet appreciation for unseen progress."]'
+[2026-03-28 08:07:17] INFO database — get_on_this_day called month=3 day=28
+[2026-03-28 08:07:17] INFO database — get_db called
+[2026-03-28 08:07:17] INFO calendar_service — is_calendar_connected called
+[2026-03-28 08:07:17] INFO calendar_service — get_upcoming_memory_events called max_results=5
+[2026-03-28 08:07:17] INFO calendar_service — _get_calendar_service called
+[2026-03-28 08:07:18] INFO calendar_service — _get_creds called
+[2026-03-28 08:07:25] INFO database — get_on_this_day called month=3 day=28
+[2026-03-28 08:07:25] INFO database — get_db called
+[2026-03-28 08:07:25] INFO calendar_service — is_calendar_connected called
+[2026-03-28 08:07:25] INFO calendar_service — get_upcoming_memory_events called max_results=5
+[2026-03-28 08:07:25] INFO calendar_service — _get_calendar_service called
+[2026-03-28 08:07:25] INFO calendar_service — _get_creds called
+[2026-03-28 08:07:26] INFO calendar_service — connect_calendar called
+[2026-03-28 08:07:26] INFO calendar_service — _get_creds called

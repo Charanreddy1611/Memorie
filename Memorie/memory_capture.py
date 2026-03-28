@@ -1,32 +1,117 @@
-import os
-import re
+"""
+Memory capture — Gemini-powered extraction and scene refinement
+================================================================
+
+This module is the text/audio/image front-end for turning raw user input into
+structured "memories" that the rest of Memoire can render as video, comics, and
+gallery entries. It talks to Google's Gemini model to:
+
+  • Parse free-form journal text into a JSON memory (title, summary, people,
+    emotion, key moments, Veo-oriented scene prompts, music direction).
+  • Transcribe and interpret voice notes the same way, using multimodal input.
+  • "Excavate" a plausible narrative from a photo of a memento (ticket,
+    receipt, souvenir) when the user triggers capture from the camera.
+  • Optionally refine scene prompts for a chosen visual style so downstream
+    video generation gets consistent cinematography and character anchors.
+
+Typical use cases: daily journaling with one-tap structure; hands-free memory
+logging while walking; digitizing a box of keepsakes; and preparing the same
+memory for different aesthetic pipelines (trailer vs. vlog vs. Ghibli-like)
+without hand-editing every shot description.
+
+When MEMOIRE_DRY_RUN is enabled in the environment (see config.DRY_RUN), all
+Gemini calls are skipped and deterministic placeholder data is returned so UI
+and storage flows can be tested without API usage or credentials.
+"""
+
 import json
-import base64
+import re
 from datetime import date
-from dotenv import load_dotenv
+from typing import Any
+
 from google import genai
 from google.genai import types
 
-load_dotenv()
+from config import (
+    CREATIVE_TEMPERATURE,
+    DEFAULT_TEMPERATURE,
+    DRY_RUN,
+    GEMINI_MODEL,
+    GOOGLE_API_KEY,
+    STYLE_CINEMATOGRAPHY,
+)
+from logger import get_logger, log_genai_call
+
+log = get_logger(__name__)
 
 _client = None
 
 
 def get_client():
+    """
+    Return a singleton google.genai Client configured with GOOGLE_API_KEY.
+
+    Lazily constructs the client on first use. Raises if the API key is missing.
+    """
+    log.info("get_client called")
     global _client
     if _client is None:
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = GOOGLE_API_KEY
         if not api_key:
             raise ValueError("Set GOOGLE_API_KEY in your .env file")
         _client = genai.Client(api_key=api_key)
     return _client
 
 
-GEMINI_MODEL = "gemini-2.5-flash"
+def _dummy_memory_dict() -> dict:
+    """
+    Return a static memory dict used when DRY_RUN skips the Gemini API.
+
+    Matches the EXTRACTION_PROMPT schema so downstream video, comic, and DB
+    paths receive the same keys they expect from a real extraction response.
+    """
+    log.info("_dummy_memory_dict called")
+    today = date.today().isoformat()
+    return {
+        "date": today,
+        "title": "Dry run memory",
+        "summary": "Placeholder summary for dry-run mode.",
+        "people": [],
+        "location": None,
+        "emotion": "calm",
+        "key_moments": [
+            "A quiet moment at the window.",
+            "Footsteps on the path.",
+            "Sunset over the horizon.",
+        ],
+        "scene_prompts": [
+            {
+                "description": "Placeholder scene one for dry run.",
+                "camera": "static",
+                "lighting": "soft",
+                "caption": "I remember the light falling just so.",
+                "duration": 8,
+            },
+            {
+                "description": "Placeholder scene two for dry run.",
+                "camera": "slow-zoom",
+                "lighting": "golden-hour",
+                "caption": "The air felt still and full of possibility.",
+                "duration": 8,
+            },
+        ],
+        "music_prompt": "Soft piano, ambient pads, slow tempo, dry-run placeholder",
+    }
 
 
-def _parse_json_safe(text: str) -> dict:
-    """Parse JSON from Gemini output, handling common quirks."""
+def _parse_json_safe(text: str) -> Any:
+    """
+    Parse JSON from Gemini output, handling markdown fences and trailing commas.
+
+    Accepts either a JSON object or array (arrays are used for refined scene
+    lists). Raises ValueError if no valid JSON can be recovered.
+    """
+    log.info("_parse_json_safe called text_len=%s", len(text))
     text = text.strip()
     if text.startswith("```"):
         text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
@@ -53,6 +138,7 @@ def _parse_json_safe(text: str) -> dict:
             pass
 
     raise ValueError(f"Could not parse JSON from model output: {text[:200]}...")
+
 
 EXTRACTION_PROMPT = """You are a memory extraction assistant. Analyze the user's input and extract a structured memory.
 
@@ -88,6 +174,10 @@ Rules:
 
 def extract_memory_from_text(user_text: str) -> dict:
     """Extract structured memory from a text journal entry."""
+    log.info(
+        "extract_memory_from_text called user_text_len=%s",
+        len(user_text),
+    )
     prompt = f"""{EXTRACTION_PROMPT}
 
 Today's date: {date.today().isoformat()}
@@ -97,13 +187,37 @@ User's memory:
 
 Return ONLY the JSON object, no markdown fences, no explanation."""
 
+    gen_config = types.GenerateContentConfig(
+        temperature=DEFAULT_TEMPERATURE,
+        response_mime_type="application/json",
+    )
+    config_log = {
+        "temperature": DEFAULT_TEMPERATURE,
+        "response_mime_type": "application/json",
+    }
+
+    if DRY_RUN:
+        dummy = json.dumps(_dummy_memory_dict())
+        log_genai_call(
+            log,
+            model=GEMINI_MODEL,
+            prompt=prompt,
+            config=config_log,
+            output=f"[DRY_RUN] {dummy}",
+        )
+        return _dummy_memory_dict()
+
     response = get_client().models.generate_content(
         model=GEMINI_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            response_mime_type="application/json",
-        ),
+        config=gen_config,
+    )
+    log_genai_call(
+        log,
+        model=GEMINI_MODEL,
+        prompt=prompt,
+        config=config_log,
+        output=response.text,
     )
 
     return _parse_json_safe(response.text)
@@ -111,6 +225,11 @@ Return ONLY the JSON object, no markdown fences, no explanation."""
 
 def extract_memory_from_audio(audio_bytes: bytes, mime_type: str = "audio/wav") -> dict:
     """Process audio input and extract structured memory."""
+    log.info(
+        "extract_memory_from_audio called audio_bytes_len=%s mime_type=%s",
+        len(audio_bytes),
+        mime_type,
+    )
     prompt = f"""{EXTRACTION_PROMPT}
 
 Today's date: {date.today().isoformat()}
@@ -119,20 +238,45 @@ The user recorded an audio message about a memory. Listen to it and extract the 
 
 Return ONLY the JSON object, no markdown fences, no explanation."""
 
+    gen_config = types.GenerateContentConfig(
+        temperature=DEFAULT_TEMPERATURE,
+        response_mime_type="application/json",
+    )
+    config_log = {
+        "temperature": DEFAULT_TEMPERATURE,
+        "response_mime_type": "application/json",
+    }
+    contents = [
+        types.Content(
+            parts=[
+                types.Part.from_text(text=prompt),
+                types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
+            ]
+        )
+    ]
+
+    if DRY_RUN:
+        dummy = json.dumps(_dummy_memory_dict())
+        log_genai_call(
+            log,
+            model=GEMINI_MODEL,
+            prompt=prompt,
+            config={**config_log, "contents": "text+audio_bytes"},
+            output=f"[DRY_RUN] {dummy}",
+        )
+        return _dummy_memory_dict()
+
     response = get_client().models.generate_content(
         model=GEMINI_MODEL,
-        contents=[
-            types.Content(
-                parts=[
-                    types.Part.from_text(text=prompt),
-                    types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
-                ]
-            )
-        ],
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            response_mime_type="application/json",
-        ),
+        contents=contents,
+        config=gen_config,
+    )
+    log_genai_call(
+        log,
+        model=GEMINI_MODEL,
+        prompt=prompt,
+        config={**config_log, "contents": "text+audio_bytes"},
+        output=response.text,
     )
 
     return _parse_json_safe(response.text)
@@ -140,6 +284,11 @@ Return ONLY the JSON object, no markdown fences, no explanation."""
 
 def trigger_memory_from_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
     """Analyze a photo of a physical object and extract associated memory context."""
+    log.info(
+        "trigger_memory_from_image called image_bytes_len=%s mime_type=%s",
+        len(image_bytes),
+        mime_type,
+    )
     prompt = f"""You are a memory archaeologist. The user has shown you a physical object
 (ticket stub, receipt, photo, souvenir, etc). Identify what it is, then imagine
 and create a rich memory that could be associated with it.
@@ -152,20 +301,45 @@ Analyze this image and create a memory based on what you see.
 
 Return ONLY the JSON object, no markdown fences, no explanation."""
 
+    gen_config = types.GenerateContentConfig(
+        temperature=CREATIVE_TEMPERATURE,
+        response_mime_type="application/json",
+    )
+    config_log = {
+        "temperature": CREATIVE_TEMPERATURE,
+        "response_mime_type": "application/json",
+    }
+    contents = [
+        types.Content(
+            parts=[
+                types.Part.from_text(text=prompt),
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            ]
+        )
+    ]
+
+    if DRY_RUN:
+        dummy = json.dumps(_dummy_memory_dict())
+        log_genai_call(
+            log,
+            model=GEMINI_MODEL,
+            prompt=prompt,
+            config={**config_log, "contents": "text+image_bytes"},
+            output=f"[DRY_RUN] {dummy}",
+        )
+        return _dummy_memory_dict()
+
     response = get_client().models.generate_content(
         model=GEMINI_MODEL,
-        contents=[
-            types.Content(
-                parts=[
-                    types.Part.from_text(text=prompt),
-                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                ]
-            )
-        ],
-        config=types.GenerateContentConfig(
-            temperature=0.8,
-            response_mime_type="application/json",
-        ),
+        contents=contents,
+        config=gen_config,
+    )
+    log_genai_call(
+        log,
+        model=GEMINI_MODEL,
+        prompt=prompt,
+        config={**config_log, "contents": "text+image_bytes"},
+        output=response.text,
     )
 
     return _parse_json_safe(response.text)
@@ -173,16 +347,13 @@ Return ONLY the JSON object, no markdown fences, no explanation."""
 
 def enhance_scene_prompts(memory: dict, style: str, character_description: str = "") -> list[dict]:
     """Refine scene prompts with style-specific cinematography and character consistency."""
-    style_guides = {
-        "anime": "Studio Ghibli aesthetic, cel-shaded, vibrant colors, expressive faces, sakura petals, soft wind effects",
-        "documentary": "35mm handheld, natural lighting, shallow depth of field, vérité style, muted color grading",
-        "movie_trailer": "Epic cinematic wide shots, dramatic lighting, anamorphic lens flare, slow motion key moments",
-        "studio_ghibli": "Watercolor backgrounds, magical realism, detailed nature, warm golden light, whimsical atmosphere",
-        "cyberpunk": "Neon reflections, rain-slicked streets, purple-blue palette, holographic overlays, dystopian beauty",
-        "vlog": "Eye-level POV, natural light, casual framing, warm color grading, jump cuts between moments",
-    }
-
-    style_desc = style_guides.get(style, style_guides["movie_trailer"])
+    log.info(
+        "enhance_scene_prompts called style=%s character_description_len=%s memory_keys=%s",
+        style,
+        len(character_description),
+        list(memory.keys()) if isinstance(memory, dict) else None,
+    )
+    style_desc = STYLE_CINEMATOGRAPHY.get(style, STYLE_CINEMATOGRAPHY["movie_trailer"])
 
     char_clause = ""
     if character_description:
@@ -208,13 +379,58 @@ For each scene, return a refined prompt that:
 Return a JSON array of objects with: description, camera, lighting, duration (always 8)
 Return ONLY the JSON array."""
 
+    gen_config = types.GenerateContentConfig(
+        temperature=DEFAULT_TEMPERATURE,
+        response_mime_type="application/json",
+    )
+    config_log = {
+        "temperature": DEFAULT_TEMPERATURE,
+        "response_mime_type": "application/json",
+    }
+
+    if DRY_RUN:
+        existing = memory.get("scene_prompts") or []
+        dummy_list = [
+            {**dict(s), "duration": 8}
+            if isinstance(s, dict)
+            else {
+                "description": str(s),
+                "camera": "static",
+                "lighting": "soft",
+                "duration": 8,
+            }
+            for s in existing
+        ]
+        if not dummy_list:
+            dummy_list = [
+                {
+                    "description": f"{style} dry-run placeholder scene",
+                    "camera": "static",
+                    "lighting": "soft",
+                    "duration": 8,
+                }
+            ]
+        dummy = json.dumps(dummy_list)
+        log_genai_call(
+            log,
+            model=GEMINI_MODEL,
+            prompt=prompt,
+            config=config_log,
+            output=f"[DRY_RUN] {dummy}",
+        )
+        return dummy_list
+
     response = get_client().models.generate_content(
         model=GEMINI_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.7,
-            response_mime_type="application/json",
-        ),
+        config=gen_config,
+    )
+    log_genai_call(
+        log,
+        model=GEMINI_MODEL,
+        prompt=prompt,
+        config=config_log,
+        output=response.text,
     )
 
     return _parse_json_safe(response.text)

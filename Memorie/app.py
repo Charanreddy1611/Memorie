@@ -1,3 +1,26 @@
+"""
+Memoire — Main Streamlit Application
+=====================================
+The primary UI for the Memoire memory preservation system.  This single-file
+Streamlit app presents four pages:
+
+  1. **Capture** — Write, speak, or photograph a memory.  Gemini extracts a
+     structured record, then the user chooses to generate a cinematic video,
+     comic panels, or both.
+  2. **Gallery** — Browse all saved memories with embedded video players,
+     comic panel grids, and audio players for the original soundtrack.
+  3. **Calendar** — "On This Day" resurfacing, date search, and Google
+     Calendar + Drive sync status / OAuth controls.
+  4. **Settings** — Upload character reference photos for Veo, set a default
+     visual style, and view API connection status.
+
+The sidebar provides navigation and tech-stack badges.  A collapsible toggle
+(custom session-state driven) lets the user shrink the sidebar to icon-only.
+
+Styling uses a warm scrapbook aesthetic (linen background, Playfair Display
+headings, DM Sans body, amber accent) injected as custom CSS.
+"""
+
 import streamlit as st
 import time
 import os
