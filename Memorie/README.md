@@ -1,64 +1,126 @@
+# Memoire
 
-**Introduction**
-Have you ever wished for an AI-powered bedtime story generator that creates soothing, personalized stories for kids?
-I built "Cozy Story Time 🛏️📖", a fun and interactive web app that generates AI-powered bedtime stories.
+**Your life, recut as a movie trailer.**
 
-**Demo Video**
+Memoire is an AI-powered memory preservation system that transforms journal entries, voice recordings, and photographs into cinematic videos, comic panels, and original soundtracks — then archives everything to Google Calendar and Drive so memories resurface exactly when they matter.
 
-![Cozy Story Time Demo](demo.gif)
+Built for **LA Hacks 2026** using the Google Gemini ecosystem.
 
-*Above: Demonstration of the Cozy Story Time app in action*
+---
 
-**Core Features of the App**
-1. AI-Generated Bedtime Stories🌙
-Users can enter a story topic, and the app creates a short, soothing story following bedtime storytelling best practices.
+## Features
 
-2. AI-Generated Illustrations🎨
-Each story comes with a custom AI-generated illustration using OpenAI's DALL·E model.
+- **Multi-modal Memory Capture** — Write, speak, or photograph a memory. Gemini 2.5 Flash extracts people, emotions, locations, and filmable scene prompts.
+- **Cinematic Video Generation** — Veo 3.1 produces short cinematic clips (8–43 seconds) with multi-scene extension and character consistency via reference photos.
+- **Comic Panel Generation** — Nano Banana Pro creates styled panels in Manga, Comic, Webtoon, Graphic Novel, or Pop Art styles with English captions.
+- **Original Soundtrack** — Lyria 3 Clip composes a custom 30-second soundtrack matched to the memory's emotional tone.
+- **Google Calendar + Drive Sync** — Generated media uploads to a dedicated Drive folder; all-day Calendar events resurface memories with embedded file links.
+- **"On This Day" Resurfacing** — Memories from the same date in previous years appear automatically on the Calendar page.
 
-3. Text-to-Speech (TTS) for Voice Narration🎙️
-To make the stories even more engaging, I added AI-powered voice narration using OpenAI’s TTS API.
+---
 
-4. Export as a PDF📄
-Users can download the bedtime story as a PDF file, including the AI-generated illustration.
+## Tech Stack
 
-5. Usage Limits to Prevent Abuse🚫
-To avoid excessive use, the app limits users to request for only 4 stories of your choice.
+| Component | Technology |
+|---|---|
+| Memory Extraction | **Gemini 2.5 Flash** |
+| Video Generation | **Veo 3.1** (fast + quality modes) |
+| Music Generation | **Lyria 3 Clip** |
+| Image Generation | **Nano Banana Pro** |
+| Voice Input | **Gemini Live API** |
+| Cloud Storage | **Google Drive API** |
+| Calendar Sync | **Google Calendar API** |
+| Frontend | **Streamlit** (custom scrapbook UI) |
+| Database | **SQLite** (WAL mode) |
+| Auth | **OAuth 2.0** (Calendar + Drive scopes) |
 
-**Building Blocks**
-1. Generates a bedtime story using GPT-4o.
-2. Creates an AI-generated illustration using DALL·E.
-3. Converts the story into speech using OpenAI’s TTS API.
-4. Generates a PDF including the story and image.
-5. Prompt Engineering - Since this app is meant for young children, I carefully crafted the AI prompts to ensure.
-    a) Calm & bedtime-friendly content (No scary elements).
-    b) Simple words & short sentences (Easy to understand).
-    c) A soothing rhythm with gentle repetition & sound effects.
-    d) Bedtime-friendly settings (Bedrooms, starry skies, cozy gardens).
-    e) Parent-child engagement through interactive storytelling
+---
 
-**Building the Web App and Deployment on Streamlit Cloud**
-1. Writing the code in Visual Studio & pushed the code to GitHub
-2. Built the front-end using Streamlit Cloud
-3. Configured environment variables & API keys securely
-4. Tested the app and fixed issues
-5. Finally, Deployed it on Streamlit Cloud
+## Getting Started
 
-**Choosing the Tech Stack**
-1. AI Story Generator - **OpenAI GPT-4o**
-2. AI Illustrations - **OpenAI DALL·E**
-3. AI Voice Narration - **OpenAI Text-to-Speech API**
-4. Web App - **Streamlit**
-5. PDF Generation - **ReportLab**
-6. Deployment - **Streamlit Cloud**
-7. Version Control - **GitHub**
+### Prerequisites
 
-**What’s Next?**
-I’m planning to further enhance "Cozy Story Time 🛏️📖" by:
+- Python 3.10+
+- A Google Cloud project with Calendar and Drive APIs enabled
+- A Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+- OAuth credentials (`credentials.json`) for Calendar/Drive
 
-1. Adding multilingual support 🌍 (Generate stories in different languages).
-2. Enabling user-created characters 🎭 (Let kids name their story hero).
-3. Adding a parent feedback system 📝 (Let parents rate stories & suggest improvements).
-4. Saving feedback to Google Sheets 📊using the Google Sheets API
-5. Building a full feedback dashboard 📈(Stored responses in a database for analysis) 
+### Installation
 
+```bash
+git clone https://github.com/Charanreddy1611/Memorie.git
+cd Memorie/Memorie
+pip install -r requirements.txt
+```
+
+### Configuration
+
+Create a `.env` file:
+
+```
+GOOGLE_API_KEY=your-gemini-api-key
+```
+
+Place your `credentials.json` in the project root for Calendar/Drive OAuth.
+
+### Run
+
+```bash
+streamlit run app.py
+```
+
+The app opens at `http://localhost:8501`.
+
+---
+
+## Pages
+
+| Page | What it does |
+|---|---|
+| **Capture** | Write, speak, or photograph a memory. Gemini extracts the story, then generate a cinematic video, comic panels, or both. |
+| **Gallery** | Browse all saved memories with embedded video players, comic panel grids, and audio players. Upload to Drive and add to Calendar. |
+| **Calendar** | "On This Day" resurfacing, date search, and Google Calendar + Drive sync status. |
+| **Settings** | Upload character reference photos for Veo, set a default visual style, and view API connection status. |
+
+---
+
+## Project Structure
+
+```
+Memoire/
+  app.py                 Streamlit UI (4 pages, scrapbook theme)
+  config.py              Centralized configuration
+  logger.py              Structured logging
+  memory_capture.py      Gemini-powered memory extraction
+  video_generator.py     Veo + Lyria + Nano Banana generation
+  calendar_service.py    Google Calendar + Drive integration
+  database.py            SQLite persistence
+  requirements.txt       Python dependencies
+  Design.md              Detailed architecture document
+```
+
+---
+
+## Deployment
+
+### Streamlit Community Cloud
+
+1. Push to GitHub
+2. Go to [share.streamlit.io](https://share.streamlit.io) and connect the repo
+3. Set main file to `Memoire/app.py`
+4. Add secrets:
+   ```toml
+   GOOGLE_API_KEY = "your-key"
+   GOOGLE_TOKEN = '{"token": "...", "refresh_token": "...", ...}'
+   ```
+
+---
+
+## Google AI Models
+
+| Model | SDK Name | Purpose |
+|---|---|---|
+| Gemini 2.5 Flash | `gemini-2.5-flash` | Memory extraction, scene refinement |
+| Veo 3.1 | `veo-3.1-generate-preview` | Video generation + extension |
+| Lyria 3 Clip | `lyria-3-clip-preview` | Soundtrack composition |
+| Nano Banana Pro | `nano-banana-pro-preview` | Cover art, comic panels, style references |
