@@ -104,22 +104,42 @@ def _dummy_memory_dict() -> dict:
     }
 
 
+def _sanitize_json_text(text: str) -> str:
+    """Strip fences, trailing commas, and control chars that break json.loads."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
+        text = re.sub(r"\n?```\s*$", "", text)
+        text = text.strip()
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+    text = re.sub(r"[\x00-\x09\x0b\x0c\x0e-\x1f]", " ", text)
+    return text
+
+
+def _try_close_truncated(text: str) -> str:
+    """Attempt to close a truncated JSON object so it can still be parsed."""
+    opens = text.count("{") - text.count("}")
+    open_arr = text.count("[") - text.count("]")
+    last_quote = text.rfind('"')
+    quote_count = text.count('"')
+    if quote_count % 2 != 0:
+        text = text[:last_quote + 1] if last_quote > 0 else text + '"'
+    text = text.rstrip(", \t\n")
+    text += "]" * max(open_arr, 0)
+    text += "}" * max(opens, 0)
+    return text
+
+
 def _parse_json_safe(text: str) -> Any:
     """
-    Parse JSON from Gemini output, handling markdown fences and trailing commas.
+    Parse JSON from Gemini output, handling markdown fences, trailing commas,
+    control characters, and truncated responses.
 
     Accepts either a JSON object or array (arrays are used for refined scene
     lists). Raises ValueError if no valid JSON can be recovered.
     """
     log.info("_parse_json_safe called text_len=%s", len(text))
-    text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
-        text = re.sub(r"\n?```$", "", text)
-        text = text.strip()
-
-    # Remove trailing commas before } or ] (most common Gemini JSON issue)
-    text = re.sub(r",\s*([}\]])", r"\1", text)
+    text = _sanitize_json_text(text)
 
     # Try direct parse
     try:
@@ -130,7 +150,16 @@ def _parse_json_safe(text: str) -> Any:
     # Try extracting the first JSON object from the text
     match = re.search(r"\{[\s\S]*\}", text)
     if match:
-        candidate = match.group(0)
+        candidate = _sanitize_json_text(match.group(0))
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    # Handle truncated output: find the outermost { and try to close it
+    brace_start = text.find("{")
+    if brace_start >= 0:
+        candidate = _try_close_truncated(text[brace_start:])
         candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
         try:
             return json.loads(candidate)
